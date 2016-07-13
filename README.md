@@ -8,6 +8,7 @@ Currently: The button toggles the screen between 2700K (Tungsten) and 6500 (Day 
 
 TODO:
 
+* Lots of cleanup, removed hardcoded IPs etc.
 * Program the rotary so that screen color temperature changes according to the rotary state. Sub todo: Unlike a button, rotary may emit the state/value too many times / too frequently. We need to control / pace the actual action on the Mac.
 * Put the light sensor next to a daylight source (say a window) via a really long cable and see if will help control the color based on real day light instead of the current time-based setting available on the Mac.
 

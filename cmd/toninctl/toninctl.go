@@ -2,65 +2,80 @@ package main
 
 import (
 	"fmt"
-	"time"
-
 	"github.com/hybridgroup/gobot"
 	"github.com/hybridgroup/gobot/api"
 	"github.com/hybridgroup/gobot/platforms/gpio"
 	"github.com/hybridgroup/gobot/platforms/intel-iot/edison"
-
+	dprofile "github.com/pkg/profile"
+	flag "github.com/spf13/pflag"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 )
 
+var appVersion string
+
+type cmdArgs struct {
+	cpuProfile    bool
+	memProfile    bool
+	verbose       bool
+	serverAddress string
+}
+
 var button *gpio.GroveButtonDriver
-var blue *gpio.GroveLedDriver
-var green *gpio.GroveLedDriver
-var red *gpio.GroveLedDriver
-var rotary *gpio.GroveRotaryDriver
-var sensor *gpio.GroveTemperatureSensorDriver
-var light *gpio.GroveLightSensorDriver
 
 var currentLightState = 2700
 
-func DetectLight(level int) {
-	if level >= 400 {
-		fmt.Println("Light detected")
-		TurnOff()
-		blue.On()
-		<-time.After(1 * time.Second)
-		Reset()
-	}
-}
-
-func TurnOff() {
-	blue.Off()
-	green.Off()
-}
-
-func Reset() {
-	TurnOff()
-	fmt.Println("Airlock ready.")
-	green.On()
-}
-
-func ToggleScreenTemp() {
+func ToggleScreenTemp(gophertoninServer string) {
 	if currentLightState == 2700 {
 		currentLightState = 6500
 	} else {
 		currentLightState = 2700
 	}
-	resp, err := http.Get(fmt.Sprintf("http://10.56.241.26:8001/gophertonin?light=%d", currentLightState))
+
+	resp, err := http.Get(fmt.Sprintf("http://%s/gophertonin?light=%d", gophertoninServer, currentLightState))
 	if err != nil {
 		log.Printf("Error sending request to gophertonin server")
+		return
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 	log.Printf("%s", body)
 }
 
+func processCmdline() cmdArgs {
+
+	var args cmdArgs
+
+	// usage is customized to include Version number
+	var usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage of %s (Version: %s):\n", os.Args[0], appVersion)
+		flag.PrintDefaults()
+	}
+
+	flag.BoolVarP(&args.cpuProfile, "cpu-profile", "", false,
+		"(for debug only) CPU profile this run")
+	flag.BoolVarP(&args.memProfile, "mem-profile", "", false,
+		"(for debug only) MEM profile this run")
+	flag.StringVarP(&args.serverAddress, "", "s", "0.0.0.0:8001",
+		"(for debug only) MEM profile this run")
+	flag.Usage = usage
+	flag.Parse()
+
+	return args
+}
+
 func main() {
+
+	args := processCmdline()
+
+	if args.cpuProfile {
+		defer dprofile.Start(dprofile.CPUProfile).Stop()
+	} else if args.memProfile {
+		defer dprofile.Start(dprofile.MemProfile).Stop()
+	}
+
 	gbot := gobot.NewGobot()
 
 	a := api.NewAPI(gbot)
@@ -70,41 +85,20 @@ func main() {
 	board := edison.NewEdisonAdaptor("edison")
 
 	button = gpio.NewGroveButtonDriver(board, "button", "2")
-	blue = gpio.NewGroveLedDriver(board, "blue", "3")
-	green = gpio.NewGroveLedDriver(board, "green", "4")
-	red = gpio.NewGroveLedDriver(board, "red", "5")
-
-	// analog
-	rotary = gpio.NewGroveRotaryDriver(board, "rotary", "0")
-	sensor = gpio.NewGroveTemperatureSensorDriver(board, "sensor", "1")
-	light = gpio.NewGroveLightSensorDriver(board, "light", "3")
 
 	work := func() {
-		Reset()
 
 		gobot.On(button.Event(gpio.Push), func(data interface{}) {
 			log.Printf("Button press")
-			ToggleScreenTemp()
+			ToggleScreenTemp(args.serverAddress)
 			log.Printf("Action for button press done")
-		})
-
-		gobot.On(button.Event(gpio.Release), func(data interface{}) {
-			Reset()
-		})
-
-		gobot.On(rotary.Event("data"), func(data interface{}) {
-			fmt.Println("rotary", data)
-		})
-
-		gobot.On(light.Event("data"), func(data interface{}) {
-			DetectLight(data.(int))
 		})
 
 	}
 
 	robot := gobot.NewRobot("airlock",
 		[]gobot.Connection{board},
-		[]gobot.Device{button, blue, green, red, rotary, sensor, light},
+		[]gobot.Device{button},
 		work,
 	)
 

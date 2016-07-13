@@ -13,6 +13,7 @@ Currently: The button toggles the screen between 2700K (Tungsten) and 6500 (Day 
 * Put the light sensor next to a daylight source (say a window) via a really long cable and see if will help control the color based on real day light instead of the current time-based setting available on the Mac.
 
 On the Mac:
+
     (cd cmd/gophertonin && go build && ./gophertonin)
 
 Another terminal on the Mac:

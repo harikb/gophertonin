@@ -23,6 +23,51 @@ func main() {
 	http.ListenAndServe("10.56.241.26:8001", nil)
 }
 
+func setFluxValue(lv int64) error {
+
+	cmd := exec.Command("defaults", "write", "org.herf.Flux", "dayColorTemp", "-int", fmt.Sprintf("%d", lv))
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("Can't invoke cmd: %v", err)
+	}
+	if stdout.String() != "" || stderr.String() != "" {
+		return fmt.Errorf("%s, %s", stdout.String(), stderr.String())
+	}
+	return err
+}
+
+func restartFlux() error {
+
+	cmd := exec.Command("killall", "Flux")
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("Can't invoke cmd: %v", err)
+	}
+	if stdout.String() != "" || stderr.String() != "" {
+		return fmt.Errorf("%s, %s", stdout.String(), stderr.String())
+	}
+
+	cmd = exec.Command("open", "/Applications/Flux.app")
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err = cmd.Run()
+	if err != nil {
+		return fmt.Errorf("Can't invoke cmd: %v", err)
+	}
+	if stdout.String() != "" || stderr.String() != "" {
+		return fmt.Errorf("%s, %s", stdout.String(), stderr.String())
+	}
+	return err
+}
+
 func handleRequest(w http.ResponseWriter, r *http.Request) {
 
 	log.Print(spew.Sdump(r))
@@ -30,7 +75,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 	lvs := r.FormValue("light")
 	log.Printf("Value for lvs %s", lvs)
 	lv, err := strconv.ParseInt(lvs, 10, 32)
-	if err != nil {
+	if err != nil || lv < 2700 || lv > 6500 {
 		log.Printf("Incorrect value for lv %d", lv)
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -39,19 +84,16 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 	resp := response{}
 	resp.Status = "Success"
 
-	cmd := exec.Command("./fluxcontrol.bash", fmt.Sprintf("%d", lv))
-	var stdout bytes.Buffer
-	cmd.Stdout = &stdout
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	err = cmd.Run()
+	err = setFluxValue(lv)
 	if err != nil {
-		resp.Error = fmt.Sprintf("Can't invoke cmd: %v", err)
+		resp.Error = fmt.Sprintf("%s", err)
 		resp.Status = "Fail"
-	}
-	if stdout.String() != "" || stderr.String() != "" {
-		resp.Error = fmt.Sprintf("%s, %s", stdout.String(), stderr.String())
-		resp.Status = "Fail"
+	} else {
+		err = restartFlux()
+		if err != nil {
+			resp.Error = fmt.Sprintf("%s", err)
+			resp.Status = "Fail"
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")

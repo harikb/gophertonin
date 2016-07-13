@@ -6,7 +6,7 @@ Beyond the click-bait, it uses the MacOSX App [f.lux](https://justgetflux.com/) 
 
 Currently: The button toggles the screen between 2700K (Tungsten) and 6500 (Day light)
 
-TODO:
+**TODO:**
 
 * Lots of cleanup, removed hardcoded IPs etc.
 * Program the rotary so that screen color temperature changes according to the rotary state. Sub todo: Unlike a button, rotary may emit the state/value too many times / too frequently. We need to control / pace the actual action on the Mac.

@@ -2,7 +2,7 @@ GoBot based Melatonin generator for Gophers
 
 Toy project for GopherCon 2016 - GoBot Hackathon, Wed Jul 13, 2016
 
-Beyond the click-bait, it uses the MacOSX App f.lux via a Go server (running on that Mac) controlled by a GoBot enabled Go App running on an Edison. The app controls the color temperature of the Mac helping the Gopher naturally generate more Melatonin!! :P.
+Beyond the click-bait, it uses the MacOSX App f.lux via a Go server (running on that Mac) controlled by a GoBot enabled Go App running on an Edison. The app controls the color temperature of the Mac helping the Gopher naturally generate more Melatonin!! :P. Sorry, if you were looking for the actual chemical, you would have to [buy it yourself](https://g.co/kgs/PJxBtD)
 
 Currently: The button toggles the screen between 2700K (Tungsten) and 6500 (Day light)
 
